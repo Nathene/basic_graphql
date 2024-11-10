@@ -1,0 +1,42 @@
+# Define the Staff type, including role, department, and contact information
+type Staff {
+  id: ID!
+  firstName: String!
+  lastName: String!
+  email: String!
+  workNumber: String
+  role: String!
+  department: String!
+  salary: Float!
+  projects: [Project!] # Staff can be assigned to multiple projects
+}
+
+# Define the Project type for staff assignments
+type Project {
+  id: ID!
+  name: String!
+  description: String
+}
+
+# Queries to fetch staff members
+type Query {
+  getStaffByID(id: ID!): Staff
+  listAllStaff: [Staff!]!
+}
+
+# Input type for creating a new staff member
+input NewStaffInput {
+  firstName: String!
+  lastName: String!
+  email: String!
+  workNumber: String
+  role: String!
+  department: String!
+  salary: Float!
+}
+
+# Mutations to add staff members and assign them to projects
+type Mutation {
+  createStaff(input: NewStaffInput!): Staff!
+  assignProjectToStaff(staffID: ID!, projectID: ID!): Project!
+}
