@@ -5,21 +5,17 @@ import (
 	"graphql/graph/generated"
 )
 
-// Resolver struct to hold the database instance.
+// Resolver is the base resolver struct for gqlgen
 type Resolver struct {
 	DB dbutil.Database
 }
 
-// Mutation returns the mutation resolver.
+// Mutation connects the mutation resolver
 func (r *Resolver) Mutation() generated.MutationResolver {
 	return &mutationResolver{r}
 }
 
-// Query returns the query resolver.
+// Query connects the query resolver
 func (r *Resolver) Query() generated.QueryResolver {
 	return &queryResolver{r}
 }
-
-type mutationResolver struct{ *Resolver }
-
-type queryResolver struct{ *Resolver }

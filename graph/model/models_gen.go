@@ -19,6 +19,8 @@ type Project struct {
 	ID          string  `json:"id"`
 	Name        string  `json:"name"`
 	Description *string `json:"description,omitempty"`
+	Department  string  `json:"department"`
+	Budget      float64 `json:"budget"`
 }
 
 type Query struct {

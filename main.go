@@ -17,7 +17,7 @@ import (
 func main() {
 	db := dbutil.NewDB()
 
-	mock.InsertMockData(db.Conn)
+	mock.InsertMockData(db.DB)
 
 	resolver := &graph.Resolver{DB: db}
 	srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: resolver}))

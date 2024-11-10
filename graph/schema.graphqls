@@ -16,6 +16,8 @@ type Project {
   id: ID!
   name: String!
   description: String
+  department: String!
+  budget: Float!
 }
 
 # Queries to fetch staff members

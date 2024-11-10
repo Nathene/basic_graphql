@@ -5,6 +5,7 @@ go 1.23.0
 require (
 	github.com/99designs/gqlgen v0.17.56
 	github.com/vektah/gqlparser/v2 v2.5.19
+	modernc.org/sqlite v1.33.1
 )
 
 require (
@@ -17,7 +18,6 @@ require (
 	modernc.org/libc v1.55.3 // indirect
 	modernc.org/mathutil v1.6.0 // indirect
 	modernc.org/memory v1.8.0 // indirect
-	modernc.org/sqlite v1.33.1 // indirect
 	modernc.org/strutil v1.2.0 // indirect
 	modernc.org/token v1.1.0 // indirect
 )
@@ -28,6 +28,5 @@ require (
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/websocket v1.5.0
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
-	github.com/mattn/go-sqlite3 v1.14.24
 	github.com/sosodev/duration v1.3.1 // indirect
 )
