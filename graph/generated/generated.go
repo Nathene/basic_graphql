@@ -60,8 +60,7 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
-		GetStaffByID func(childComplexity int, id string) int
-		ListAllStaff func(childComplexity int) int
+		ListAllStaff func(childComplexity int, filter *model.StaffFilter, sortBy *model.SortBy, order *model.Order, pagination *model.Pagination) int
 	}
 
 	Staff struct {
@@ -82,8 +81,7 @@ type MutationResolver interface {
 	AssignProjectToStaff(ctx context.Context, staffID string, projectID string) (*model.Project, error)
 }
 type QueryResolver interface {
-	GetStaffByID(ctx context.Context, id string) (*model.Staff, error)
-	ListAllStaff(ctx context.Context) ([]*model.Staff, error)
+	ListAllStaff(ctx context.Context, filter *model.StaffFilter, sortBy *model.SortBy, order *model.Order, pagination *model.Pagination) ([]*model.Staff, error)
 }
 
 type executableSchema struct {
@@ -164,24 +162,17 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Project.Name(childComplexity), true
 
-	case "Query.getStaffByID":
-		if e.complexity.Query.GetStaffByID == nil {
-			break
-		}
-
-		args, err := ec.field_Query_getStaffByID_args(context.TODO(), rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Query.GetStaffByID(childComplexity, args["id"].(string)), true
-
 	case "Query.listAllStaff":
 		if e.complexity.Query.ListAllStaff == nil {
 			break
 		}
 
-		return e.complexity.Query.ListAllStaff(childComplexity), true
+		args, err := ec.field_Query_listAllStaff_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.ListAllStaff(childComplexity, args["filter"].(*model.StaffFilter), args["sortBy"].(*model.SortBy), args["order"].(*model.Order), args["pagination"].(*model.Pagination)), true
 
 	case "Staff.department":
 		if e.complexity.Staff.Department == nil {
@@ -255,6 +246,8 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	ec := executionContext{opCtx, e, 0, 0, make(chan graphql.DeferredResult)}
 	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
 		ec.unmarshalInputNewStaffInput,
+		ec.unmarshalInputPagination,
+		ec.unmarshalInputStaffFilter,
 	)
 	first := true
 
@@ -373,11 +366,37 @@ type Project {
   department: String!
   budget: Float!
 }
+input StaffFilter {
+  role: String
+  department: String
+  salaryMin: Float
+  salaryMax: Float
+}
 
+input Pagination {
+  page: Int
+  limit: Int
+}
+
+enum SortBy {
+  FIRST_NAME
+  LAST_NAME
+  ROLE
+  SALARY
+}
+
+enum Order {
+  ASC
+  DESC
+}
 # Queries to fetch staff members
 type Query {
-  getStaffByID(id: ID!): Staff
-  listAllStaff: [Staff!]!
+    listAllStaff(
+    filter: StaffFilter
+    sortBy: SortBy
+    order: Order
+    pagination: Pagination
+  ): [Staff]
 }
 
 # Input type for creating a new staff member
@@ -527,35 +546,116 @@ func (ec *executionContext) field_Query___type_argsName(
 	return zeroVal, nil
 }
 
-func (ec *executionContext) field_Query_getStaffByID_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+func (ec *executionContext) field_Query_listAllStaff_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	arg0, err := ec.field_Query_getStaffByID_argsID(ctx, rawArgs)
+	arg0, err := ec.field_Query_listAllStaff_argsFilter(ctx, rawArgs)
 	if err != nil {
 		return nil, err
 	}
-	args["id"] = arg0
+	args["filter"] = arg0
+	arg1, err := ec.field_Query_listAllStaff_argsSortBy(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["sortBy"] = arg1
+	arg2, err := ec.field_Query_listAllStaff_argsOrder(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["order"] = arg2
+	arg3, err := ec.field_Query_listAllStaff_argsPagination(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["pagination"] = arg3
 	return args, nil
 }
-func (ec *executionContext) field_Query_getStaffByID_argsID(
+func (ec *executionContext) field_Query_listAllStaff_argsFilter(
 	ctx context.Context,
 	rawArgs map[string]interface{},
-) (string, error) {
+) (*model.StaffFilter, error) {
 	// We won't call the directive if the argument is null.
 	// Set call_argument_directives_with_null to true to call directives
 	// even if the argument is null.
-	_, ok := rawArgs["id"]
+	_, ok := rawArgs["filter"]
 	if !ok {
-		var zeroVal string
+		var zeroVal *model.StaffFilter
 		return zeroVal, nil
 	}
 
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
-	if tmp, ok := rawArgs["id"]; ok {
-		return ec.unmarshalNID2string(ctx, tmp)
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("filter"))
+	if tmp, ok := rawArgs["filter"]; ok {
+		return ec.unmarshalOStaffFilter2ᚖgraphqlᚋgraphᚋmodelᚐStaffFilter(ctx, tmp)
 	}
 
-	var zeroVal string
+	var zeroVal *model.StaffFilter
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_listAllStaff_argsSortBy(
+	ctx context.Context,
+	rawArgs map[string]interface{},
+) (*model.SortBy, error) {
+	// We won't call the directive if the argument is null.
+	// Set call_argument_directives_with_null to true to call directives
+	// even if the argument is null.
+	_, ok := rawArgs["sortBy"]
+	if !ok {
+		var zeroVal *model.SortBy
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("sortBy"))
+	if tmp, ok := rawArgs["sortBy"]; ok {
+		return ec.unmarshalOSortBy2ᚖgraphqlᚋgraphᚋmodelᚐSortBy(ctx, tmp)
+	}
+
+	var zeroVal *model.SortBy
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_listAllStaff_argsOrder(
+	ctx context.Context,
+	rawArgs map[string]interface{},
+) (*model.Order, error) {
+	// We won't call the directive if the argument is null.
+	// Set call_argument_directives_with_null to true to call directives
+	// even if the argument is null.
+	_, ok := rawArgs["order"]
+	if !ok {
+		var zeroVal *model.Order
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("order"))
+	if tmp, ok := rawArgs["order"]; ok {
+		return ec.unmarshalOOrder2ᚖgraphqlᚋgraphᚋmodelᚐOrder(ctx, tmp)
+	}
+
+	var zeroVal *model.Order
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_listAllStaff_argsPagination(
+	ctx context.Context,
+	rawArgs map[string]interface{},
+) (*model.Pagination, error) {
+	// We won't call the directive if the argument is null.
+	// Set call_argument_directives_with_null to true to call directives
+	// even if the argument is null.
+	_, ok := rawArgs["pagination"]
+	if !ok {
+		var zeroVal *model.Pagination
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("pagination"))
+	if tmp, ok := rawArgs["pagination"]; ok {
+		return ec.unmarshalOPagination2ᚖgraphqlᚋgraphᚋmodelᚐPagination(ctx, tmp)
+	}
+
+	var zeroVal *model.Pagination
 	return zeroVal, nil
 }
 
@@ -990,8 +1090,8 @@ func (ec *executionContext) fieldContext_Project_budget(_ context.Context, field
 	return fc, nil
 }
 
-func (ec *executionContext) _Query_getStaffByID(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Query_getStaffByID(ctx, field)
+func (ec *executionContext) _Query_listAllStaff(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_listAllStaff(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -1004,7 +1104,7 @@ func (ec *executionContext) _Query_getStaffByID(ctx context.Context, field graph
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().GetStaffByID(rctx, fc.Args["id"].(string))
+		return ec.resolvers.Query().ListAllStaff(rctx, fc.Args["filter"].(*model.StaffFilter), fc.Args["sortBy"].(*model.SortBy), fc.Args["order"].(*model.Order), fc.Args["pagination"].(*model.Pagination))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -1013,12 +1113,12 @@ func (ec *executionContext) _Query_getStaffByID(ctx context.Context, field graph
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*model.Staff)
+	res := resTmp.([]*model.Staff)
 	fc.Result = res
-	return ec.marshalOStaff2ᚖgraphqlᚋgraphᚋmodelᚐStaff(ctx, field.Selections, res)
+	return ec.marshalOStaff2ᚕᚖgraphqlᚋgraphᚋmodelᚐStaff(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Query_getStaffByID(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Query_listAllStaff(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Query",
 		Field:      field,
@@ -1055,73 +1155,9 @@ func (ec *executionContext) fieldContext_Query_getStaffByID(ctx context.Context,
 		}
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Query_getStaffByID_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+	if fc.Args, err = ec.field_Query_listAllStaff_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Query_listAllStaff(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Query_listAllStaff(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().ListAllStaff(rctx)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.([]*model.Staff)
-	fc.Result = res
-	return ec.marshalNStaff2ᚕᚖgraphqlᚋgraphᚋmodelᚐStaffᚄ(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Query_listAllStaff(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Query",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "id":
-				return ec.fieldContext_Staff_id(ctx, field)
-			case "firstName":
-				return ec.fieldContext_Staff_firstName(ctx, field)
-			case "lastName":
-				return ec.fieldContext_Staff_lastName(ctx, field)
-			case "email":
-				return ec.fieldContext_Staff_email(ctx, field)
-			case "workNumber":
-				return ec.fieldContext_Staff_workNumber(ctx, field)
-			case "role":
-				return ec.fieldContext_Staff_role(ctx, field)
-			case "department":
-				return ec.fieldContext_Staff_department(ctx, field)
-			case "salary":
-				return ec.fieldContext_Staff_salary(ctx, field)
-			case "projects":
-				return ec.fieldContext_Staff_projects(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type Staff", field.Name)
-		},
 	}
 	return fc, nil
 }
@@ -3499,6 +3535,88 @@ func (ec *executionContext) unmarshalInputNewStaffInput(ctx context.Context, obj
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputPagination(ctx context.Context, obj interface{}) (model.Pagination, error) {
+	var it model.Pagination
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"page", "limit"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "page":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("page"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Page = data
+		case "limit":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("limit"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Limit = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputStaffFilter(ctx context.Context, obj interface{}) (model.StaffFilter, error) {
+	var it model.StaffFilter
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"role", "department", "salaryMin", "salaryMax"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "role":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("role"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Role = data
+		case "department":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("department"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Department = data
+		case "salaryMin":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("salaryMin"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SalaryMin = data
+		case "salaryMax":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("salaryMax"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SalaryMax = data
+		}
+	}
+
+	return it, nil
+}
+
 // endregion **************************** input.gotpl *****************************
 
 // region    ************************** interface.gotpl ***************************
@@ -3638,7 +3756,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Query")
-		case "getStaffByID":
+		case "listAllStaff":
 			field := field
 
 			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
@@ -3647,29 +3765,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Query_getStaffByID(ctx, field)
-				return res
-			}
-
-			rrm := func(ctx context.Context) graphql.Marshaler {
-				return ec.OperationContext.RootResolverMiddleware(ctx,
-					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "listAllStaff":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
 				res = ec._Query_listAllStaff(ctx, field)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
 				return res
 			}
 
@@ -4177,50 +4273,6 @@ func (ec *executionContext) marshalNStaff2graphqlᚋgraphᚋmodelᚐStaff(ctx co
 	return ec._Staff(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNStaff2ᚕᚖgraphqlᚋgraphᚋmodelᚐStaffᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Staff) graphql.Marshaler {
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNStaff2ᚖgraphqlᚋgraphᚋmodelᚐStaff(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
-}
-
 func (ec *executionContext) marshalNStaff2ᚖgraphqlᚋgraphᚋmodelᚐStaff(ctx context.Context, sel ast.SelectionSet, v *model.Staff) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -4525,6 +4577,62 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 	return res
 }
 
+func (ec *executionContext) unmarshalOFloat2ᚖfloat64(ctx context.Context, v interface{}) (*float64, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := graphql.UnmarshalFloatContext(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOFloat2ᚖfloat64(ctx context.Context, sel ast.SelectionSet, v *float64) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	res := graphql.MarshalFloatContext(*v)
+	return graphql.WrapContextMarshaler(ctx, res)
+}
+
+func (ec *executionContext) unmarshalOInt2ᚖint(ctx context.Context, v interface{}) (*int, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := graphql.UnmarshalInt(v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOInt2ᚖint(ctx context.Context, sel ast.SelectionSet, v *int) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	res := graphql.MarshalInt(*v)
+	return res
+}
+
+func (ec *executionContext) unmarshalOOrder2ᚖgraphqlᚋgraphᚋmodelᚐOrder(ctx context.Context, v interface{}) (*model.Order, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(model.Order)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOOrder2ᚖgraphqlᚋgraphᚋmodelᚐOrder(ctx context.Context, sel ast.SelectionSet, v *model.Order) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
+}
+
+func (ec *executionContext) unmarshalOPagination2ᚖgraphqlᚋgraphᚋmodelᚐPagination(ctx context.Context, v interface{}) (*model.Pagination, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputPagination(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalOProject2ᚕᚖgraphqlᚋgraphᚋmodelᚐProjectᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Project) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -4572,11 +4680,76 @@ func (ec *executionContext) marshalOProject2ᚕᚖgraphqlᚋgraphᚋmodelᚐProj
 	return ret
 }
 
+func (ec *executionContext) unmarshalOSortBy2ᚖgraphqlᚋgraphᚋmodelᚐSortBy(ctx context.Context, v interface{}) (*model.SortBy, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(model.SortBy)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOSortBy2ᚖgraphqlᚋgraphᚋmodelᚐSortBy(ctx context.Context, sel ast.SelectionSet, v *model.SortBy) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
+}
+
+func (ec *executionContext) marshalOStaff2ᚕᚖgraphqlᚋgraphᚋmodelᚐStaff(ctx context.Context, sel ast.SelectionSet, v []*model.Staff) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalOStaff2ᚖgraphqlᚋgraphᚋmodelᚐStaff(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	return ret
+}
+
 func (ec *executionContext) marshalOStaff2ᚖgraphqlᚋgraphᚋmodelᚐStaff(ctx context.Context, sel ast.SelectionSet, v *model.Staff) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
 	return ec._Staff(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOStaffFilter2ᚖgraphqlᚋgraphᚋmodelᚐStaffFilter(ctx context.Context, v interface{}) (*model.StaffFilter, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputStaffFilter(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalOString2ᚖstring(ctx context.Context, v interface{}) (*string, error) {

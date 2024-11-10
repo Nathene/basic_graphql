@@ -6,8 +6,11 @@ package graph
 
 import (
 	"context"
+	"fmt"
+	"graphql/graph/generated"
 	"graphql/graph/model"
 	"log"
+	"strings"
 )
 
 // CreateStaff creates a new staff member using the NewStaffInput.
@@ -37,62 +40,122 @@ func (r *mutationResolver) AssignProjectToStaff(ctx context.Context, staffID str
 	return project, nil
 }
 
-// GetStaffByID fetches a staff member by their ID.
-func (r *queryResolver) GetStaffByID(ctx context.Context, id string) (*model.Staff, error) {
-	return r.DB.GetStaffByID(id)
-}
+func (r *queryResolver) ListAllStaff(ctx context.Context, filter *model.StaffFilter, sortBy *model.SortBy, order *model.Order, pagination *model.Pagination) ([]*model.Staff, error) {
+	if r.DB == nil {
+		log.Println("DB connection is nil")
+		return nil, fmt.Errorf("database connection is not initialized")
+	}
 
-// GetStaffWithProjects retrieves the staff and their associated projects from the database
-func (r *queryResolver) ListAllStaff(ctx context.Context) ([]*model.Staff, error) {
-	var staffList []*model.Staff
+	// Initialize the base query and argument list
+	var query = "SELECT id, first_name, last_name, email, role, department, salary FROM staff"
+	var args []interface{}
 
-	// Assuming r.DB implements the Query method
-	rows, err := r.DB.Query(`
-		SELECT s.id, s.first_name, s.last_name, s.department, s.role, s.salary 
-		FROM staff s`)
+	// Apply filter logic
+	if filter != nil {
+		var whereClauses []string
+
+		// Check if the Role is provided (not nil) and add it to the WHERE clause
+		if filter.Role != nil && *filter.Role != "" {
+			whereClauses = append(whereClauses, "role = ?")
+			args = append(args, *filter.Role)
+		}
+
+		// Check if the Department is provided (not nil) and add it to the WHERE clause
+		if filter.Department != nil && *filter.Department != "" {
+			whereClauses = append(whereClauses, "department = ?")
+			args = append(args, *filter.Department)
+		}
+
+		// Check if the SalaryMin is provided (greater than 0) and add it to the WHERE clause
+		if filter.SalaryMin != nil && *filter.SalaryMin > 0 {
+			whereClauses = append(whereClauses, "salary >= ?")
+			args = append(args, *filter.SalaryMin)
+		}
+
+		// Check if the SalaryMax is provided (greater than 0) and add it to the WHERE clause
+		if filter.SalaryMax != nil && *filter.SalaryMax > 0 {
+			whereClauses = append(whereClauses, "salary <= ?")
+			args = append(args, *filter.SalaryMax)
+		}
+
+		// If any conditions are added, join them with "AND" and apply to query
+		if len(whereClauses) > 0 {
+			query += " WHERE " + strings.Join(whereClauses, " AND ")
+		}
+	}
+
+	// Sorting logic
+	if sortBy != nil {
+		switch *sortBy {
+		case model.SortByFirstName:
+			query += " ORDER BY first_name"
+		case model.SortByLastName:
+			query += " ORDER BY last_name"
+		case model.SortByRole:
+			query += " ORDER BY role"
+		case model.SortBySalary:
+			query += " ORDER BY salary"
+		default:
+			query += " ORDER BY first_name" // Default sorting if none specified
+		}
+	}
+
+	// Apply order (ASC/DESC)
+	if order != nil {
+		switch *order {
+		case model.OrderAsc:
+			query += " ASC"
+		case model.OrderDesc:
+			query += " DESC"
+		default:
+			query += " ASC" // Default order is ascending
+		}
+	}
+
+	// Apply pagination
+	if pagination != nil {
+		// Ensure that page and limit have valid values
+		if *pagination.Page < 1 {
+			*pagination.Page = 1 // Ensure pagination starts from page 1
+		}
+		if *pagination.Limit < 1 {
+			*pagination.Limit = 10 // Default to 10 items per page if not specified
+		}
+
+		// Apply the LIMIT and OFFSET for pagination
+		query += fmt.Sprintf(" LIMIT %d OFFSET %d", *pagination.Limit, (*pagination.Page-1)*(*pagination.Limit))
+	}
+
+	// Execute the query
+	rows, err := r.DB.Query(query, args...)
 	if err != nil {
 		log.Println("Error fetching staff data:", err)
 		return nil, err
 	}
 	defer rows.Close()
 
-	// Iterate through the staff rows
+	// Parse the results
+	var staffList []*model.Staff
 	for rows.Next() {
 		var staff model.Staff
-		err := rows.Scan(&staff.ID, &staff.FirstName, &staff.LastName, &staff.Department, &staff.Role, &staff.Salary)
+		err := rows.Scan(&staff.ID, &staff.FirstName, &staff.LastName, &staff.Email, &staff.Role, &staff.Department, &staff.Salary)
 		if err != nil {
 			log.Println("Error scanning staff data:", err)
 			return nil, err
 		}
 
-		// Fetch associated projects for the current staff member
-		var projects []*model.Project
-		projectRows, err := r.DB.Query(`
-			SELECT p.name, p.department 
-			FROM projects p
-			JOIN staff_projects sp ON p.id = sp.project_id
-			WHERE sp.staff_id = ?`, staff.ID)
+		// Fetch projects for each staff member
+		projects, err := r.DB.GetProjectsByStaffID(staff.ID)
 		if err != nil {
-			log.Println("Error fetching projects for staff", staff.ID, ":", err)
+			log.Println("Error fetching projects for staff:", err)
 			return nil, err
-		}
-
-		// Iterate through the project rows and add them to the staff member
-		for projectRows.Next() {
-			var project model.Project
-			err := projectRows.Scan(&project.Name, &project.Department)
-			if err != nil {
-				log.Println("Error scanning project data:", err)
-				return nil, err
-			}
-			projects = append(projects, &project)
 		}
 		staff.Projects = projects
 
-		// Add the staff member to the result list
 		staffList = append(staffList, &staff)
 	}
 
+	// Check for errors after iterating over rows
 	if err := rows.Err(); err != nil {
 		log.Println("Error iterating over staff rows:", err)
 		return nil, err
@@ -101,5 +164,23 @@ func (r *queryResolver) ListAllStaff(ctx context.Context) ([]*model.Staff, error
 	return staffList, nil
 }
 
+// Mutation returns generated.MutationResolver implementation.
+func (r *Resolver) Mutation() generated.MutationResolver { return &mutationResolver{r} }
+
+// Query returns generated.QueryResolver implementation.
+func (r *Resolver) Query() generated.QueryResolver { return &queryResolver{r} }
+
 type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
+
+// !!! WARNING !!!
+// The code below was going to be deleted when updating resolvers. It has been copied here so you have
+// one last chance to move it out of harms way if you want. There are two reasons this happens:
+//  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
+//    it when you're done.
+//  - You have helper methods in this file. Move them out to keep these resolver files clean.
+/*
+	func (r *queryResolver) GetStaffByID(ctx context.Context, id string) (*model.Staff, error) {
+	return r.DB.GetStaffByID(id)
+}
+*/

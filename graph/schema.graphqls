@@ -19,11 +19,37 @@ type Project {
   department: String!
   budget: Float!
 }
+input StaffFilter {
+  role: String
+  department: String
+  salaryMin: Float
+  salaryMax: Float
+}
 
+input Pagination {
+  page: Int
+  limit: Int
+}
+
+enum SortBy {
+  FIRST_NAME
+  LAST_NAME
+  ROLE
+  SALARY
+}
+
+enum Order {
+  ASC
+  DESC
+}
 # Queries to fetch staff members
 type Query {
-  getStaffByID(id: ID!): Staff
-  listAllStaff: [Staff!]!
+    listAllStaff(
+    filter: StaffFilter
+    sortBy: SortBy
+    order: Order
+    pagination: Pagination
+  ): [Staff]
 }
 
 # Input type for creating a new staff member
